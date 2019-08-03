@@ -40,9 +40,11 @@
 
 A Promise/A+ implementation.
 
-Passes the Compliances tests for Promises/A+
-Passes the ECMAScript 6 Promises Test Suite.
-Has ES2018 finally implementation.
+- Passes the Compliances tests for Promises/A+
+
+- Passes the ECMAScript 6 Promises Test Suite.
+
+- Has ES2018 finally implementation.
 
 **Example**
 
