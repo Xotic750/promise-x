@@ -1,7 +1,5 @@
 import Bluebird from 'bluebird';
-import $P, {implementation} from '../src/promise-x';
-
-const $I = implementation();
+import $P, {implementation as $I} from '../src/promise-x';
 
 [$I, $P].forEach(($Promise, testNum) => {
   describe(`support user subclassing of Promise  ${testNum}`, function() {

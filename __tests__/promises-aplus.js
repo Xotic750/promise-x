@@ -1,9 +1,7 @@
 // tests from promises-aplus-tests
 import aplusTests from 'promises-aplus-tests';
 import Bluebird from 'bluebird';
-import {implementation} from '../src/promise-x';
-
-const $I = implementation();
+import {implementation as $I} from '../src/promise-x';
 
 describe('promises/A+ Tests', function() {
   it('aplus', function() {

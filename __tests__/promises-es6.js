@@ -2,9 +2,7 @@
 import es6Tests from 'promises-es6-tests';
 import Bluebird from 'bluebird';
 import assert from 'assert';
-import {implementation} from '../src/promise-x';
-
-const $I = implementation();
+import {implementation as $I} from '../src/promise-x';
 
 describe('promises/ES6 Tests', function() {
   it('es6', function() {

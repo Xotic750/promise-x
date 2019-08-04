@@ -1,7 +1,6 @@
 import Bluebird from 'bluebird';
-import $P, {implementation} from '../src/promise-x';
+import $P, {implementation as $I} from '../src/promise-x';
 
-const $I = implementation();
 const failIfThrows = function(done) {
   return function(e) {
     done(e || new Error());

@@ -42,7 +42,7 @@
 
 ## @xotic750/promise-x
 
-A Promise/A+ implementation.
+A Promise/A+ and ES2018 implementation.
 
 - Passes the Compliances tests for Promises/A+
 

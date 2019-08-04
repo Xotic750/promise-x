@@ -1,5 +1,7 @@
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
 
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
@@ -8,15 +10,14 @@ function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = 
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
-function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
 import isPrimitive from 'is-primitive';
 import isFunction from 'is-function-x';
 import isNil from 'is-nil-x';
 import toObject from 'to-object-x';
 import isArguments from 'is-arguments';
 import bind from 'bind-x';
-import hasSymbolSupport from 'has-symbol-support-x';
+import $iterator$ from 'symbol-iterator-x';
+import $species$ from 'symbol-species-x';
 import toBoolean from 'to-boolean-x';
 import create from 'object-create-x';
 import toLength from 'to-length-x';
@@ -26,6 +27,7 @@ import objectKeys from 'object-keys-x';
 import assertIsFunction from 'assert-is-function-x';
 import assertIsObject from 'assert-is-object-x';
 import attempt from 'attempt-x';
+import renameFunction from 'rename-function-x';
 /* eslint-disable-next-line lodash/prefer-noop */
 
 var noop = function noop() {};
@@ -55,45 +57,6 @@ var UNDEFINED = void 0;
 var PRIVATE_PROMISE = '[[promise]]';
 var $apply = bind(Function.call, Function.apply);
 var $call = bind(Function.call, Function.call);
-/* eslint-disable-next-line compat/compat */
-
-var symbolSpecies = hasSymbolSupport && Symbol.species || '@@species';
-var ES6_SHIM_ITERATOR = '_es6-shim iterator_';
-var AT_AT_ITERATOR = '@@iterator';
-/* eslint-disable-next-line compat/compat */
-
-var hasRealSymbolIterator = hasSymbolSupport && _typeof(Symbol.iterator) === 'symbol';
-/* eslint-disable-next-line compat/compat */
-
-var hasFakeSymbolIterator = (typeof Symbol === "undefined" ? "undefined" : _typeof(Symbol)) === 'object' && typeof Symbol.iterator === 'string';
-var hasSymbolIterator = hasRealSymbolIterator || hasFakeSymbolIterator;
-
-var getOtherSymbolIterator = function getOtherSymbolIterator(iterable) {
-  if (iterable[ES6_SHIM_ITERATOR]) {
-    return ES6_SHIM_ITERATOR;
-  }
-
-  if (iterable[AT_AT_ITERATOR]) {
-    return AT_AT_ITERATOR;
-  }
-
-  return null;
-};
-
-var getSymIt = function getSymIt() {
-  if (hasSymbolIterator) {
-    /* eslint-disable-next-line compat/compat */
-    return Symbol.iterator;
-  }
-
-  var result = getOtherSymbolIterator([]);
-
-  if (typeof result === 'string' && isFunction([][result])) {
-    return result;
-  }
-
-  return AT_AT_ITERATOR;
-};
 
 var call = function call(F, V) {
   /* eslint-disable-next-line prefer-rest-params */
@@ -104,8 +67,6 @@ var getMethod = function getMethod(o, p) {
   var func = toObject(o)[p];
   return isNil(func) ? UNDEFINED : assertIsFunction(func);
 };
-
-var $iterator$ = getSymIt();
 
 var iteratorComplete = function iteratorComplete(iterResult) {
   return toBoolean(iterResult.done);
@@ -299,7 +260,7 @@ var speciesConstructor = function speciesConstructor(O, defaultConstructor) {
     return defaultConstructor;
   }
 
-  var S = assertBadConstructor(C)[symbolSpecies];
+  var S = assertBadConstructor(C)[$species$];
 
   if (isNil(S)) {
     return defaultConstructor;
@@ -411,665 +372,628 @@ var assertBadPromiseCtr2 = function assertBadPromiseCtr2(capability) {
   }
 
   return capability;
-}; // Promises
-// Simplest possible implementation; use a 3rd-party library if you
-// want the best possible speed and/or long stack traces.
+}; // "PromiseCapability" in the spec is what most promise implementations call a "deferred".
 
 
-export var implementation = function implementation() {
-  // some environments don't have nativeSetTimeout - no way to shim here.
-  if (nativeSetTimeout === null) {
-    return UNDEFINED;
-  } // "PromiseCapability" in the spec is what most promise implementations call a "deferred".
+var PromiseCapability = function PromiseCapability(C) {
+  assertBadPromiseCtr(C);
+  var capability = this;
+
+  var resolver = function resolver(resolve, reject) {
+    assertBadPromiseImplementation(capability);
+    capability.resolve = resolve;
+    capability.reject = reject;
+  }; // Initialize fields to inform optimizers about the object shape.
 
 
-  var PromiseCapability = function PromiseCapability(C) {
-    assertBadPromiseCtr(C);
-    var capability = this;
+  capability.resolve = UNDEFINED;
+  capability.reject = UNDEFINED;
+  capability.promise = new C(resolver);
+  assertBadPromiseCtr2(capability);
+};
 
-    var resolver = function resolver(resolve, reject) {
-      assertBadPromiseImplementation(capability);
-      capability.resolve = resolve;
-      capability.reject = reject;
-    }; // Initialize fields to inform optimizers about the object shape.
+var enqueue = getEnqueue(); // Constants for Promise implementation
 
+var PROMISE_PENDING = 0;
+var PROMISE_FULFILLED = 1;
+var PROMISE_REJECTED = 2; // We store fulfill/reject handlers and capabilities in a single array.
 
-    capability.resolve = UNDEFINED;
-    capability.reject = UNDEFINED;
-    capability.promise = new C(resolver);
-    assertBadPromiseCtr2(capability);
-  };
+var PROMISE_FULFILL_OFFSET = 0;
+var PROMISE_REJECT_OFFSET = 1;
+var PROMISE_CAPABILITY_OFFSET = 2; // This is used in an optimization for chaining promises via then.
 
-  var enqueue = getEnqueue(); // Constants for Promise implementation
+var PROMISE_FAKE_CAPABILITY = {};
 
-  var PROMISE_PENDING = 0;
-  var PROMISE_FULFILLED = 1;
-  var PROMISE_REJECTED = 2; // We store fulfill/reject handlers and capabilities in a single array.
+var promiseReactionJob = function promiseReactionJob(args) {
+  var _args3 = _slicedToArray(args, 3),
+      handler = _args3[0],
+      promiseCapability = _args3[1],
+      argument = _args3[2];
 
-  var PROMISE_FULFILL_OFFSET = 0;
-  var PROMISE_REJECT_OFFSET = 1;
-  var PROMISE_CAPABILITY_OFFSET = 2; // This is used in an optimization for chaining promises via then.
+  if (promiseCapability === PROMISE_FAKE_CAPABILITY) {
+    // Fast case, when we don't actually need to chain through to a (real) promiseCapability.
+    return handler(argument);
+  }
 
-  var PROMISE_FAKE_CAPABILITY = {};
+  var attemptResult = attempt(handler, argument);
+  var f = attemptResult.threw ? promiseCapability.reject : promiseCapability.resolve;
+  return f(attemptResult.value);
+};
 
-  var promiseReactionJob = function promiseReactionJob(args) {
-    var _args3 = _slicedToArray(args, 3),
-        handler = _args3[0],
-        promiseCapability = _args3[1],
-        argument = _args3[2];
+var enqueuePromiseReactionJob = function enqueuePromiseReactionJob(args) {
+  var _args4 = _slicedToArray(args, 3),
+      handler = _args4[0],
+      capability = _args4[1],
+      argument = _args4[2];
 
-    if (promiseCapability === PROMISE_FAKE_CAPABILITY) {
-      // Fast case, when we don't actually need to chain through to a (real) promiseCapability.
-      return handler(argument);
+  enqueue(function enqueuee() {
+    promiseReactionJob([handler, capability, argument]);
+  });
+};
+
+var undefinePromise = function undefinePromise(promise, idx) {
+  promise[idx + PROMISE_FULFILL_OFFSET] = UNDEFINED;
+  promise[idx + PROMISE_REJECT_OFFSET] = UNDEFINED;
+  promise[idx + PROMISE_CAPABILITY_OFFSET] = UNDEFINED;
+};
+
+var enqueueAndDefineFulfill = function enqueueAndDefineFulfill(args) {
+  var _args5 = _slicedToArray(args, 4),
+      length = _args5[0],
+      privatePromise = _args5[1],
+      value = _args5[2],
+      promise = _args5[3];
+
+  for (var i = 1, idx = 0; i < length; i += 1, idx += 3) {
+    enqueuePromiseReactionJob([privatePromise[idx + PROMISE_FULFILL_OFFSET], privatePromise[idx + PROMISE_CAPABILITY_OFFSET], value]);
+    undefinePromise(promise, idx);
+  }
+};
+
+var enqueueAndDefineReject = function enqueueAndDefineReject(args) {
+  var _args6 = _slicedToArray(args, 4),
+      length = _args6[0],
+      privatePromise = _args6[1],
+      reason = _args6[2],
+      promise = _args6[3];
+
+  for (var i = 1, idx = 0; i < length; i += 1, idx += 3) {
+    enqueuePromiseReactionJob([privatePromise[idx + PROMISE_REJECT_OFFSET], privatePromise[idx + PROMISE_CAPABILITY_OFFSET], reason]);
+    undefinePromise(promise, idx);
+  }
+};
+
+var undefineProps = function undefineProps(privatePromise) {
+  privatePromise.fulfillReactionHandler0 = UNDEFINED;
+  privatePromise.rejectReactions0 = UNDEFINED;
+  privatePromise.reactionCapability0 = UNDEFINED;
+};
+
+var defineResultAndState = function defineResultAndState(args) {
+  var _args7 = _slicedToArray(args, 3),
+      privatePromise = _args7[0],
+      value = _args7[1],
+      state = _args7[2];
+
+  privatePromise.result = value;
+  privatePromise.state = state;
+  privatePromise.reactionLength = 0;
+};
+
+var fulfillPromise = function fulfillPromise(promise, value) {
+  var privatePromise = promise[PRIVATE_PROMISE];
+  var length = privatePromise.reactionLength;
+
+  if (length > 0) {
+    enqueuePromiseReactionJob([privatePromise.fulfillReactionHandler0, privatePromise.reactionCapability0, value]);
+    undefineProps(privatePromise);
+
+    if (length > 1) {
+      enqueueAndDefineFulfill([length, privatePromise, value, promise]);
     }
+  }
 
-    var attemptResult = attempt(handler, argument);
-    var f = attemptResult.threw ? promiseCapability.reject : promiseCapability.resolve;
-    return f(attemptResult.value);
-  };
+  defineResultAndState([privatePromise, value, PROMISE_FULFILLED]);
+};
 
-  var enqueuePromiseReactionJob = function enqueuePromiseReactionJob(args) {
-    var _args4 = _slicedToArray(args, 3),
-        handler = _args4[0],
-        capability = _args4[1],
-        argument = _args4[2];
+var rejectPromise = function rejectPromise(promise, reason) {
+  var privatePromise = promise[PRIVATE_PROMISE];
+  var length = privatePromise.reactionLength;
 
-    enqueue(function enqueuee() {
-      promiseReactionJob([handler, capability, argument]);
-    });
-  };
+  if (length > 0) {
+    enqueuePromiseReactionJob([privatePromise.rejectReactionHandler0, privatePromise.reactionCapability0, reason]);
+    undefineProps(privatePromise);
 
-  var undefinePromise = function undefinePromise(promise, idx) {
-    promise[idx + PROMISE_FULFILL_OFFSET] = UNDEFINED;
-    promise[idx + PROMISE_REJECT_OFFSET] = UNDEFINED;
-    promise[idx + PROMISE_CAPABILITY_OFFSET] = UNDEFINED;
-  };
-
-  var enqueueAndDefineFulfill = function enqueueAndDefineFulfill(args) {
-    var _args5 = _slicedToArray(args, 4),
-        length = _args5[0],
-        privatePromise = _args5[1],
-        value = _args5[2],
-        promise = _args5[3];
-
-    for (var i = 1, idx = 0; i < length; i += 1, idx += 3) {
-      enqueuePromiseReactionJob([privatePromise[idx + PROMISE_FULFILL_OFFSET], privatePromise[idx + PROMISE_CAPABILITY_OFFSET], value]);
-      undefinePromise(promise, idx);
+    if (length > 1) {
+      enqueueAndDefineReject([length, privatePromise, reason, promise]);
     }
-  };
+  }
 
-  var enqueueAndDefineReject = function enqueueAndDefineReject(args) {
-    var _args6 = _slicedToArray(args, 4),
-        length = _args6[0],
-        privatePromise = _args6[1],
-        reason = _args6[2],
-        promise = _args6[3];
+  defineResultAndState([privatePromise, reason, PROMISE_REJECTED]);
+};
 
-    for (var i = 1, idx = 0; i < length; i += 1, idx += 3) {
-      enqueuePromiseReactionJob([privatePromise[idx + PROMISE_REJECT_OFFSET], privatePromise[idx + PROMISE_CAPABILITY_OFFSET], reason]);
-      undefinePromise(promise, idx);
-    }
-  };
+var promiseResolveThenableJob;
 
-  var undefineProps = function undefineProps(privatePromise) {
-    privatePromise.fulfillReactionHandler0 = UNDEFINED;
-    privatePromise.rejectReactions0 = UNDEFINED;
-    privatePromise.reactionCapability0 = UNDEFINED;
-  };
+var createResolvingFunctions = function createResolvingFunctions(promise) {
+  var alreadyResolved = false;
 
-  var defineResultAndState = function defineResultAndState(args) {
-    var _args7 = _slicedToArray(args, 3),
-        privatePromise = _args7[0],
-        value = _args7[1],
-        state = _args7[2];
-
-    privatePromise.result = value;
-    privatePromise.state = state;
-    privatePromise.reactionLength = 0;
-  };
-
-  var fulfillPromise = function fulfillPromise(promise, value) {
-    var privatePromise = promise[PRIVATE_PROMISE];
-    var length = privatePromise.reactionLength;
-
-    if (length > 0) {
-      enqueuePromiseReactionJob([privatePromise.fulfillReactionHandler0, privatePromise.reactionCapability0, value]);
-      undefineProps(privatePromise);
-
-      if (length > 1) {
-        enqueueAndDefineFulfill([length, privatePromise, value, promise]);
-      }
-    }
-
-    defineResultAndState([privatePromise, value, PROMISE_FULFILLED]);
-  };
-
-  var rejectPromise = function rejectPromise(promise, reason) {
-    var privatePromise = promise[PRIVATE_PROMISE];
-    var length = privatePromise.reactionLength;
-
-    if (length > 0) {
-      enqueuePromiseReactionJob([privatePromise.rejectReactionHandler0, privatePromise.reactionCapability0, reason]);
-      undefineProps(privatePromise);
-
-      if (length > 1) {
-        enqueueAndDefineReject([length, privatePromise, reason, promise]);
-      }
-    }
-
-    defineResultAndState([privatePromise, reason, PROMISE_REJECTED]);
-  };
-
-  var promiseResolveThenableJob;
-
-  var createResolvingFunctions = function createResolvingFunctions(promise) {
-    var alreadyResolved = false;
-
-    var resolve = function resolve(resolution) {
-      if (alreadyResolved) {
-        return UNDEFINED;
-      }
-
-      alreadyResolved = true;
-
-      if (resolution === promise) {
-        return rejectPromise(promise, new TypeError('Self resolution'));
-      }
-
-      if (isPrimitive(resolution)) {
-        return fulfillPromise(promise, resolution);
-      }
-
-      var attemptResult = attempt(function attemptee() {
-        return resolution.then;
-      });
-
-      if (attemptResult.threw) {
-        return rejectPromise(promise, attemptResult.value);
-      }
-
-      var then = attemptResult.value;
-
-      if (isFunction(then) === false) {
-        return fulfillPromise(promise, resolution);
-      }
-
-      enqueue(function enqueuee() {
-        promiseResolveThenableJob([promise, resolution, then]);
-      });
+  var resolve = function resolve(resolution) {
+    if (alreadyResolved) {
       return UNDEFINED;
-    };
-
-    var reject = function reject(reason) {
-      if (alreadyResolved) {
-        return UNDEFINED;
-      }
-
-      alreadyResolved = true;
-      return rejectPromise(promise, reason);
-    };
-
-    return {
-      resolve: resolve,
-      reject: reject
-    };
-  };
-
-  var Promise$prototype$then;
-
-  var optimizedThen = function optimizedThen(args) {
-    var _args8 = _slicedToArray(args, 4),
-        then = _args8[0],
-        thenable = _args8[1],
-        resolve = _args8[2],
-        reject = _args8[3]; // Optimization: since we discard the result, we can pass our
-    // own then implementation a special hint to let it know it
-    // doesn't have to create it.  (The PROMISE_FAKE_CAPABILITY
-    // object is local to this implementation and unforgeable outside.)
-
-
-    if (then === Promise$prototype$then) {
-      $call(then, thenable, resolve, reject, PROMISE_FAKE_CAPABILITY);
-    } else {
-      $call(then, thenable, resolve, reject);
-    }
-  };
-
-  promiseResolveThenableJob = function $promiseResolveThenableJob(args) {
-    var _args9 = _slicedToArray(args, 3),
-        promise = _args9[0],
-        thenable = _args9[1],
-        then = _args9[2];
-
-    var _createResolvingFunct = createResolvingFunctions(promise),
-        resolve = _createResolvingFunct.resolve,
-        reject = _createResolvingFunct.reject;
-
-    var attemptResults = attempt(optimizedThen, [then, thenable, resolve, reject]);
-
-    if (attemptResults.threw) {
-      reject(attemptResults.value);
-    }
-  };
-
-  var assertPromiseRequiresNew = function assertPromiseRequiresNew(context, Ctr) {
-    if (toBoolean(context instanceof Ctr) === false) {
-      throw new TypeError('Constructor Promise requires "new"');
     }
 
-    return context;
-  };
+    alreadyResolved = true;
 
-  var assertBadConstruction = function assertBadConstruction(context) {
-    if (context && context[PRIVATE_PROMISE]) {
-      throw new TypeError('Bad construction');
+    if (resolution === promise) {
+      return rejectPromise(promise, new TypeError('Self resolution'));
     }
 
-    return context;
-  }; // see https://bugs.ecmascript.org/show_bug.cgi?id=2482
-
-
-  var assertValidResolver = function assertValidResolver(resolver) {
-    if (isFunction(resolver) === false) {
-      throw new TypeError('not a valid resolver');
+    if (isPrimitive(resolution)) {
+      return fulfillPromise(promise, resolution);
     }
 
-    return resolver;
-  };
-
-  var getSlotsObject = function getSlotsObject() {
-    return _defineProperty({}, PRIVATE_PROMISE, {
-      result: UNDEFINED,
-      state: PROMISE_PENDING,
-      // The first member of the "reactions" array is inlined here,
-      // since most promises only have one reaction.
-      // We've also exploded the 'reaction' object to inline the
-      // "handler" and "capability" fields, since both fulfill and
-      // reject reactions share the same capability.
-      reactionLength: 0,
-      fulfillReactionHandler0: UNDEFINED,
-      rejectReactionHandler0: UNDEFINED,
-      reactionCapability0: UNDEFINED
-    });
-  };
-
-  var Promise$prototype;
-
-  var $Promise = function Promise(resolver) {
-    assertPromiseRequiresNew(this, $Promise);
-    assertBadConstruction(this);
-    assertValidResolver(resolver);
-    var promise = emulateES6construct([this, $Promise, Promise$prototype, getSlotsObject()]);
-    var resolvingFunctions = createResolvingFunctions(promise);
-    var reject = resolvingFunctions.reject;
     var attemptResult = attempt(function attemptee() {
-      resolver(resolvingFunctions.resolve, reject);
+      return resolution.then;
     });
 
     if (attemptResult.threw) {
-      reject(attemptResult.value);
+      return rejectPromise(promise, attemptResult.value);
     }
 
-    return promise;
-  };
+    var then = attemptResult.value;
 
-  Promise$prototype = $Promise.prototype;
-
-  var promiseAllResolver = function promiseAllResolver(args) {
-    var _args10 = _slicedToArray(args, 4),
-        index = _args10[0],
-        values = _args10[1],
-        capability = _args10[2],
-        remaining = _args10[3];
-
-    var alreadyCalled = false;
-    return function allResolver(x) {
-      if (alreadyCalled) {
-        return;
-      }
-
-      alreadyCalled = true;
-      values[index] = x;
-      remaining.count -= 1;
-
-      if (remaining.count === 0) {
-        capability.resolve(values); // call w/ this===undefined
-      }
-    };
-  };
-
-  var performPromiseAll = function performPromiseAll(iteratorRecord, C, resultCapability) {
-    var it = iteratorRecord.iterator;
-    var values = [];
-    var remaining = {
-      count: 1
-    };
-    var next;
-    var nextValue;
-    var index = 0;
-
-    while (true) {
-      try {
-        next = iteratorStep(it);
-
-        if (next === false) {
-          iteratorRecord.done = true;
-          break;
-        }
-
-        nextValue = next.value;
-      } catch (e) {
-        iteratorRecord.done = true;
-        throw e;
-      }
-
-      values[index] = UNDEFINED;
-      var nextPromise = C.resolve(nextValue);
-      var resolveElement = promiseAllResolver([index, values, resultCapability, remaining]);
-      remaining.count += 1;
-      optimizedThen([nextPromise.then, nextPromise, resolveElement, resultCapability.reject]);
-      index += 1;
+    if (isFunction(then) === false) {
+      return fulfillPromise(promise, resolution);
     }
 
+    enqueue(function enqueuee() {
+      promiseResolveThenableJob([promise, resolution, then]);
+    });
+    return UNDEFINED;
+  };
+
+  var reject = function reject(reason) {
+    if (alreadyResolved) {
+      return UNDEFINED;
+    }
+
+    alreadyResolved = true;
+    return rejectPromise(promise, reason);
+  };
+
+  return {
+    resolve: resolve,
+    reject: reject
+  };
+};
+
+var Promise$prototype$then;
+
+var optimizedThen = function optimizedThen(args) {
+  var _args8 = _slicedToArray(args, 4),
+      then = _args8[0],
+      thenable = _args8[1],
+      resolve = _args8[2],
+      reject = _args8[3]; // Optimization: since we discard the result, we can pass our
+  // own then implementation a special hint to let it know it
+  // doesn't have to create it.  (The PROMISE_FAKE_CAPABILITY
+  // object is local to this implementation and unforgeable outside.)
+
+
+  if (then === Promise$prototype$then) {
+    $call(then, thenable, resolve, reject, PROMISE_FAKE_CAPABILITY);
+  } else {
+    $call(then, thenable, resolve, reject);
+  }
+};
+
+promiseResolveThenableJob = function $promiseResolveThenableJob(args) {
+  var _args9 = _slicedToArray(args, 3),
+      promise = _args9[0],
+      thenable = _args9[1],
+      then = _args9[2];
+
+  var _createResolvingFunct = createResolvingFunctions(promise),
+      resolve = _createResolvingFunct.resolve,
+      reject = _createResolvingFunct.reject;
+
+  var attemptResults = attempt(optimizedThen, [then, thenable, resolve, reject]);
+
+  if (attemptResults.threw) {
+    reject(attemptResults.value);
+  }
+};
+
+var assertPromiseRequiresNew = function assertPromiseRequiresNew(context, Ctr) {
+  if (toBoolean(context instanceof Ctr) === false) {
+    throw new TypeError('Constructor Promise requires "new"');
+  }
+
+  return context;
+};
+
+var assertBadConstruction = function assertBadConstruction(context) {
+  if (context && context[PRIVATE_PROMISE]) {
+    throw new TypeError('Bad construction');
+  }
+
+  return context;
+}; // see https://bugs.ecmascript.org/show_bug.cgi?id=2482
+
+
+var assertValidResolver = function assertValidResolver(resolver) {
+  if (isFunction(resolver) === false) {
+    throw new TypeError('not a valid resolver');
+  }
+
+  return resolver;
+};
+
+var getSlotsObject = function getSlotsObject() {
+  return _defineProperty({}, PRIVATE_PROMISE, {
+    result: UNDEFINED,
+    state: PROMISE_PENDING,
+    // The first member of the "reactions" array is inlined here,
+    // since most promises only have one reaction.
+    // We've also exploded the 'reaction' object to inline the
+    // "handler" and "capability" fields, since both fulfill and
+    // reject reactions share the same capability.
+    reactionLength: 0,
+    fulfillReactionHandler0: UNDEFINED,
+    rejectReactionHandler0: UNDEFINED,
+    reactionCapability0: UNDEFINED
+  });
+};
+
+var Promise$prototype;
+
+var $Promise = function Promise(resolver) {
+  assertPromiseRequiresNew(this, $Promise);
+  assertBadConstruction(this);
+  assertValidResolver(resolver);
+  var promise = emulateES6construct([this, $Promise, Promise$prototype, getSlotsObject()]);
+  var resolvingFunctions = createResolvingFunctions(promise);
+  var reject = resolvingFunctions.reject;
+  var attemptResult = attempt(function attemptee() {
+    resolver(resolvingFunctions.resolve, reject);
+  });
+
+  if (attemptResult.threw) {
+    reject(attemptResult.value);
+  }
+
+  return promise;
+};
+
+Promise$prototype = $Promise.prototype;
+
+var promiseAllResolver = function promiseAllResolver(args) {
+  var _args10 = _slicedToArray(args, 4),
+      index = _args10[0],
+      values = _args10[1],
+      capability = _args10[2],
+      remaining = _args10[3];
+
+  var alreadyCalled = false;
+  return function allResolver(x) {
+    if (alreadyCalled) {
+      return;
+    }
+
+    alreadyCalled = true;
+    values[index] = x;
     remaining.count -= 1;
 
     if (remaining.count === 0) {
-      resultCapability.resolve(values); // call w/ this===undefined
+      capability.resolve(values); // call w/ this===undefined
     }
-
-    return resultCapability.promise;
   };
-
-  var assertPromiseIsObject = function assertPromiseIsObject(C) {
-    if (isPrimitive(C)) {
-      throw new TypeError('Promise is not object');
-    }
-
-    return C;
-  };
-
-  var assertBadConstructor3 = function assertBadConstructor3(C) {
-    if (isPrimitive(C)) {
-      throw new TypeError('Bad promise constructor');
-    }
-
-    return C;
-  };
-
-  var assertIsPromise = function assertIsPromise(promise) {
-    if (isPromise(promise) === false) {
-      throw new TypeError('not a promise');
-    }
-
-    return promise;
-  };
-
-  var performPromiseRace = function performPromiseRace(iteratorRecord, C, resultCapability) {
-    var it = iteratorRecord.iterator;
-    var next;
-    var nextValue;
-    var nextPromise;
-
-    while (true) {
-      try {
-        next = iteratorStep(it);
-
-        if (next === false) {
-          // NOTE: If iterable has no items, resulting promise will never
-          // resolve; see:
-          // https://github.com/domenic/promises-unwrapping/issues/75
-          // https://bugs.ecmascript.org/show_bug.cgi?id=2515
-          iteratorRecord.done = true;
-          break;
-        }
-
-        nextValue = next.value;
-      } catch (e) {
-        iteratorRecord.done = true;
-        throw e;
-      }
-
-      nextPromise = C.resolve(nextValue);
-      optimizedThen([nextPromise.then, nextPromise, resultCapability.resolve, resultCapability.reject]);
-    }
-
-    return resultCapability.promise;
-  };
-
-  defineProperties($Promise, _defineProperty({
-    all: {
-      configurable: true,
-      value: function all(iterable) {
-        var C = assertPromiseIsObject(this);
-        var capability = new PromiseCapability(C);
-        var iterator;
-        var iteratorRecord;
-
-        try {
-          iterator = getIterator(iterable);
-          iteratorRecord = {
-            iterator: iterator,
-            done: false
-          };
-          return performPromiseAll(iteratorRecord, C, capability);
-        } catch (e) {
-          var exception = e;
-
-          if (iteratorRecord && toBoolean(iteratorRecord.done) === false) {
-            var attemptResult = attempt(iteratorClose, iterator, true);
-
-            if (attemptResult.threw) {
-              exception = attemptResult.value;
-            }
-          }
-
-          capability.reject(exception);
-          return capability.promise;
-        }
-      },
-      writable: true
-    },
-    race: {
-      configurable: true,
-      value: function race(iterable) {
-        var C = assertPromiseIsObject(this);
-        var capability = new PromiseCapability(C);
-        var iterator;
-        var iteratorRecord;
-
-        try {
-          iterator = getIterator(iterable);
-          iteratorRecord = {
-            iterator: iterator,
-            done: false
-          };
-          return performPromiseRace(iteratorRecord, C, capability);
-        } catch (e) {
-          var exception = e;
-
-          if (iteratorRecord && !iteratorRecord.done) {
-            var attemptResult = attempt(iteratorClose, iterator, true);
-
-            if (attemptResult.threw) {
-              exception = attemptResult.value;
-            }
-          }
-
-          capability.reject(exception);
-          return capability.promise;
-        }
-      },
-      writable: true
-    },
-    reject: {
-      configurable: true,
-      value: function reject(reason) {
-        var C = this;
-
-        if (isPrimitive(C)) {
-          throw new TypeError('Bad promise constructor');
-        }
-
-        var capability = new PromiseCapability(C);
-        capability.reject(reason); // call with this===undefined
-
-        return capability.promise;
-      },
-      writable: true
-    },
-    resolve: {
-      configurable: true,
-      value: function resolve(v) {
-        // See https://esdiscuss.org/topic/fixing-promise-resolve for spec
-        var C = assertBadConstructor3(this);
-
-        if (isPromise(v) && v.constructor === C) {
-          return v;
-        }
-
-        var capability = new PromiseCapability(C);
-        capability.resolve(v); // call with this===undefined
-
-        return capability.promise;
-      },
-      writable: true
-    }
-  }, symbolSpecies, {
-    get: function get() {
-      return this;
-    }
-  }));
-
-  var promiseResolve = function PromiseResolve(C, value) {
-    if (isPromise(value) && value.constructor === C) {
-      return value;
-    }
-
-    var promiseCapability = new PromiseCapability(C);
-    promiseCapability.resolve(value);
-    return promiseCapability.promise;
-  };
-
-  var createThenFinally = function CreateThenFinally(C, onFinally) {
-    /* eslint-disable-next-line func-names */
-    return function (value) {
-      var result = onFinally();
-      /* eslint-disable-next-line func-names */
-
-      return promiseResolve(C, result).then(function () {
-        return value;
-      });
-    };
-  };
-
-  var createCatchFinally = function CreateCatchFinally(C, onFinally) {
-    /* eslint-disable-next-line func-names */
-    return function (reason) {
-      var result = onFinally();
-      /* eslint-disable-next-line func-names */
-
-      return promiseResolve(C, result).then(function () {
-        throw reason;
-      });
-    };
-  };
-
-  defineProperties(Promise$prototype, {
-    catch: {
-      configurable: true,
-      value: function $catch(onRejected) {
-        return this.then(null, onRejected);
-      },
-      writable: true
-    },
-    finally: {
-      configurable: true,
-      value: function $finally(onFinally) {
-        var promise = assertIsObject(this);
-        var C = assertIsFunction(speciesConstructor(promise, $Promise));
-        var isCallable = isFunction(onFinally);
-        var thenFinally = isCallable ? createThenFinally(C, onFinally) : onFinally;
-        var catchFinally = isCallable ? createCatchFinally(C, onFinally) : onFinally;
-        return promise.then(thenFinally, catchFinally);
-      },
-      writable: true
-    },
-    then: {
-      configurable: true,
-      value: function then(onFulfilled, onRejected) {
-        var promise = assertIsPromise(this);
-        var C = speciesConstructor(promise, $Promise);
-        /* eslint-disable-next-line prefer-rest-params */
-
-        var returnValueIsIgnored = arguments.length > 2 && arguments[2] === PROMISE_FAKE_CAPABILITY;
-        var resultCapability = returnValueIsIgnored && C === $Promise ? PROMISE_FAKE_CAPABILITY : new PromiseCapability(C); // PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability)
-        // Note that we've split the 'reaction' object into its two
-        // components, "capabilities" and "handler"
-        // "capabilities" is always equal to `resultCapability`
-
-        var fulfillReactionHandler = isFunction(onFulfilled) ? onFulfilled : identity;
-        var rejectReactionHandler = isFunction(onRejected) ? onRejected : thrower;
-        var privatePromise = promise[PRIVATE_PROMISE];
-
-        if (privatePromise.state === PROMISE_PENDING) {
-          if (privatePromise.reactionLength === 0) {
-            privatePromise.fulfillReactionHandler0 = fulfillReactionHandler;
-            privatePromise.rejectReactionHandler0 = rejectReactionHandler;
-            privatePromise.reactionCapability0 = resultCapability;
-          } else {
-            var idx = 3 * (privatePromise.reactionLength - 1);
-            privatePromise[idx + PROMISE_FULFILL_OFFSET] = fulfillReactionHandler;
-            privatePromise[idx + PROMISE_REJECT_OFFSET] = rejectReactionHandler;
-            privatePromise[idx + PROMISE_CAPABILITY_OFFSET] = resultCapability;
-          }
-
-          privatePromise.reactionLength += 1;
-        } else if (privatePromise.state === PROMISE_FULFILLED) {
-          enqueuePromiseReactionJob([fulfillReactionHandler, resultCapability, privatePromise.result]);
-        } else if (privatePromise.state === PROMISE_REJECTED) {
-          enqueuePromiseReactionJob([rejectReactionHandler, resultCapability, privatePromise.result]);
-        } else {
-          throw new TypeError('unexpected Promise state');
-        }
-
-        return resultCapability.promise;
-      },
-      writable: true
-    }
-  });
-
-  if (Object.getOwnPropertyDescriptor) {
-    {
-      var descriptor = Object.getOwnPropertyDescriptor(Promise$prototype.finally, 'name');
-
-      if (descriptor && descriptor.configurable) {
-        Object.defineProperty(Promise$prototype.finally, 'name', {
-          configurable: true,
-          value: 'finally'
-        });
-      }
-    }
-    {
-      var _descriptor = Object.getOwnPropertyDescriptor(Promise$prototype.catch, 'name');
-
-      if (_descriptor && _descriptor.configurable) {
-        Object.defineProperty(Promise$prototype.catch, 'name', {
-          configurable: true,
-          value: 'catch'
-        });
-      }
-    }
-  } // This helps the optimizer by ensuring that methods which take capabilities aren't polymorphic.
-
-
-  PROMISE_FAKE_CAPABILITY = new PromiseCapability($Promise);
-  Promise$prototype$then = Promise$prototype.then;
-  return $Promise;
 };
+
+var performPromiseAll = function performPromiseAll(iteratorRecord, C, resultCapability) {
+  var it = iteratorRecord.iterator;
+  var values = [];
+  var remaining = {
+    count: 1
+  };
+  var next;
+  var nextValue;
+  var index = 0;
+
+  while (true) {
+    try {
+      next = iteratorStep(it);
+
+      if (next === false) {
+        iteratorRecord.done = true;
+        break;
+      }
+
+      nextValue = next.value;
+    } catch (e) {
+      iteratorRecord.done = true;
+      throw e;
+    }
+
+    values[index] = UNDEFINED;
+    var nextPromise = C.resolve(nextValue);
+    var resolveElement = promiseAllResolver([index, values, resultCapability, remaining]);
+    remaining.count += 1;
+    optimizedThen([nextPromise.then, nextPromise, resolveElement, resultCapability.reject]);
+    index += 1;
+  }
+
+  remaining.count -= 1;
+
+  if (remaining.count === 0) {
+    resultCapability.resolve(values); // call w/ this===undefined
+  }
+
+  return resultCapability.promise;
+};
+
+var assertPromiseIsObject = function assertPromiseIsObject(C) {
+  if (isPrimitive(C)) {
+    throw new TypeError('Promise is not object');
+  }
+
+  return C;
+};
+
+var assertBadConstructor3 = function assertBadConstructor3(C) {
+  if (isPrimitive(C)) {
+    throw new TypeError('Bad promise constructor');
+  }
+
+  return C;
+};
+
+var assertIsPromise = function assertIsPromise(promise) {
+  if (isPromise(promise) === false) {
+    throw new TypeError('not a promise');
+  }
+
+  return promise;
+};
+
+var performPromiseRace = function performPromiseRace(iteratorRecord, C, resultCapability) {
+  var it = iteratorRecord.iterator;
+  var next;
+  var nextValue;
+  var nextPromise;
+
+  while (true) {
+    try {
+      next = iteratorStep(it);
+
+      if (next === false) {
+        // NOTE: If iterable has no items, resulting promise will never
+        // resolve; see:
+        // https://github.com/domenic/promises-unwrapping/issues/75
+        // https://bugs.ecmascript.org/show_bug.cgi?id=2515
+        iteratorRecord.done = true;
+        break;
+      }
+
+      nextValue = next.value;
+    } catch (e) {
+      iteratorRecord.done = true;
+      throw e;
+    }
+
+    nextPromise = C.resolve(nextValue);
+    optimizedThen([nextPromise.then, nextPromise, resultCapability.resolve, resultCapability.reject]);
+  }
+
+  return resultCapability.promise;
+};
+
+var promiseResolve = function promiseResolve(C, value) {
+  // See https://esdiscuss.org/topic/fixing-promise-resolve for spec
+  assertBadConstructor3(C);
+
+  if (isPromise(value) && value.constructor === C) {
+    return value;
+  }
+
+  var promiseCapability = new PromiseCapability(C);
+  promiseCapability.resolve(value);
+  return promiseCapability.promise;
+};
+
+defineProperties($Promise, _defineProperty({
+  all: {
+    configurable: true,
+    value: function all(iterable) {
+      var C = assertPromiseIsObject(this);
+      var capability = new PromiseCapability(C);
+      var iterator;
+      var iteratorRecord;
+
+      try {
+        iterator = getIterator(iterable);
+        iteratorRecord = {
+          iterator: iterator,
+          done: false
+        };
+        return performPromiseAll(iteratorRecord, C, capability);
+      } catch (e) {
+        var exception = e;
+
+        if (iteratorRecord && toBoolean(iteratorRecord.done) === false) {
+          var attemptResult = attempt(iteratorClose, iterator, true);
+
+          if (attemptResult.threw) {
+            exception = attemptResult.value;
+          }
+        }
+
+        capability.reject(exception);
+        return capability.promise;
+      }
+    },
+    writable: true
+  },
+  race: {
+    configurable: true,
+    value: function race(iterable) {
+      var C = assertPromiseIsObject(this);
+      var capability = new PromiseCapability(C);
+      var iterator;
+      var iteratorRecord;
+
+      try {
+        iterator = getIterator(iterable);
+        iteratorRecord = {
+          iterator: iterator,
+          done: false
+        };
+        return performPromiseRace(iteratorRecord, C, capability);
+      } catch (e) {
+        var exception = e;
+
+        if (iteratorRecord && !iteratorRecord.done) {
+          var attemptResult = attempt(iteratorClose, iterator, true);
+
+          if (attemptResult.threw) {
+            exception = attemptResult.value;
+          }
+        }
+
+        capability.reject(exception);
+        return capability.promise;
+      }
+    },
+    writable: true
+  },
+  reject: {
+    configurable: true,
+    value: function reject(reason) {
+      var C = this;
+
+      if (isPrimitive(C)) {
+        throw new TypeError('Bad promise constructor');
+      }
+
+      var capability = new PromiseCapability(C);
+      capability.reject(reason); // call with this===undefined
+
+      return capability.promise;
+    },
+    writable: true
+  },
+  resolve: {
+    configurable: true,
+    value: function resolve(value) {
+      return promiseResolve(this, value);
+    },
+    writable: true
+  }
+}, $species$, {
+  get: function get() {
+    return this;
+  }
+}));
+
+var createThenFinally = function CreateThenFinally(C, onFinally) {
+  /* eslint-disable-next-line func-names */
+  return function (value) {
+    var result = onFinally();
+    /* eslint-disable-next-line func-names */
+
+    return promiseResolve(C, result).then(function () {
+      return value;
+    });
+  };
+};
+
+var createCatchFinally = function CreateCatchFinally(C, onFinally) {
+  /* eslint-disable-next-line func-names */
+  return function (reason) {
+    var result = onFinally();
+    /* eslint-disable-next-line func-names */
+
+    return promiseResolve(C, result).then(function () {
+      throw reason;
+    });
+  };
+};
+
+defineProperties(Promise$prototype, {
+  catch: {
+    configurable: true,
+    value: function $catch(onRejected) {
+      return this.then(null, onRejected);
+    },
+    writable: true
+  },
+  finally: {
+    configurable: true,
+    value: function $finally(onFinally) {
+      var promise = assertIsObject(this);
+      var C = assertIsFunction(speciesConstructor(promise, $Promise));
+      var isCallable = isFunction(onFinally);
+      var thenFinally = isCallable ? createThenFinally(C, onFinally) : onFinally;
+      var catchFinally = isCallable ? createCatchFinally(C, onFinally) : onFinally;
+      return promise.then(thenFinally, catchFinally);
+    },
+    writable: true
+  },
+  then: {
+    configurable: true,
+    value: function then(onFulfilled, onRejected) {
+      var promise = assertIsPromise(this);
+      var C = speciesConstructor(promise, $Promise);
+      /* eslint-disable-next-line prefer-rest-params */
+
+      var returnValueIsIgnored = arguments.length > 2 && arguments[2] === PROMISE_FAKE_CAPABILITY;
+      var resultCapability = returnValueIsIgnored && C === $Promise ? PROMISE_FAKE_CAPABILITY : new PromiseCapability(C); // PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability)
+      // Note that we've split the 'reaction' object into its two
+      // components, "capabilities" and "handler"
+      // "capabilities" is always equal to `resultCapability`
+
+      var fulfillReactionHandler = isFunction(onFulfilled) ? onFulfilled : identity;
+      var rejectReactionHandler = isFunction(onRejected) ? onRejected : thrower;
+      var privatePromise = promise[PRIVATE_PROMISE];
+
+      if (privatePromise.state === PROMISE_PENDING) {
+        if (privatePromise.reactionLength === 0) {
+          privatePromise.fulfillReactionHandler0 = fulfillReactionHandler;
+          privatePromise.rejectReactionHandler0 = rejectReactionHandler;
+          privatePromise.reactionCapability0 = resultCapability;
+        } else {
+          var idx = 3 * (privatePromise.reactionLength - 1);
+          privatePromise[idx + PROMISE_FULFILL_OFFSET] = fulfillReactionHandler;
+          privatePromise[idx + PROMISE_REJECT_OFFSET] = rejectReactionHandler;
+          privatePromise[idx + PROMISE_CAPABILITY_OFFSET] = resultCapability;
+        }
+
+        privatePromise.reactionLength += 1;
+      } else if (privatePromise.state === PROMISE_FULFILLED) {
+        enqueuePromiseReactionJob([fulfillReactionHandler, resultCapability, privatePromise.result]);
+      } else if (privatePromise.state === PROMISE_REJECTED) {
+        enqueuePromiseReactionJob([rejectReactionHandler, resultCapability, privatePromise.result]);
+      } else {
+        throw new TypeError('unexpected Promise state');
+      }
+
+      return resultCapability.promise;
+    },
+    writable: true
+  }
+});
+renameFunction(Promise$prototype.catch, 'catch', true);
+renameFunction(Promise$prototype.finally, 'finally', true); // This helps the optimizer by ensuring that methods which take capabilities aren't polymorphic.
+
+PROMISE_FAKE_CAPABILITY = new PromiseCapability($Promise);
+Promise$prototype$then = Promise$prototype.then;
+export var implementation = nativeSetTimeout === null ? UNDEFINED : $Promise;
 
 var throwsError = function throwsError(func) {
   return attempt(func).threw;
 };
+/* Tests */
+
 
 var valueOrFalseIfThrows = function valueOrFalseIfThrows(func) {
   var res = attempt(func);
@@ -1201,6 +1125,6 @@ var testWorkingFinally = function testWorkingFinally() {
 };
 
 var isWorking = toBoolean(NativePromise) && testSupportsSubclassing() && testIgnoresNonFunctionThenCallbacks() && testRequiresObjectContext() && testPromiseResolve() && testThenSynchronicity() && testBadResolverPromise() && testWorkingFinally();
-export default isWorking ? NativePromise : implementation();
+export default isWorking ? NativePromise : implementation;
 
 //# sourceMappingURL=promise-x.esm.js.map
