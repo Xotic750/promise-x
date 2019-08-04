@@ -24,9 +24,9 @@
   alt="npm version" height="18">
 </a>
 <a
-  href="https://www.jsdelivr.com/package/npm/promise-x"
+  href="https://www.jsdelivr.com/package/npm/@xotic750/promise-x"
   title="jsDelivr hits">
-<img src="https://data.jsdelivr.com/v1/package/npm/promise-x/badge?style=rounded"
+<img src="https://data.jsdelivr.com/v1/package/npm/@xotic750/promise-x/badge?style=rounded"
   alt="jsDelivr hits" height="18">
 </a>
 <a
