@@ -18,9 +18,9 @@
   alt="devDependency status" height="18"/>
 </a>
 <a
-  href="https://badge.fury.io/js/promise-x"
+  href="https://badge.fury.io/js/%40xotic750%2Fpromise-x"
   title="npm version">
-<img src="https://badge.fury.io/js/promise-x.svg"
+<img src="https://badge.fury.io/js/%40xotic750%2Fpromise-x.svg"
   alt="npm version" height="18">
 </a>
 <a
@@ -36,7 +36,7 @@
   alt="bettercodehub score" height="18">
 </a>
 
-## promise-x
+## @xotic750/promise-x
 
 A Promise/A+ implementation.
 

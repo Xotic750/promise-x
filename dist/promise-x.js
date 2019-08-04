@@ -1,8 +1,8 @@
 /*!
 {
   "author": "Graham Fairweather",
-  "copywrite": "Copyright (c) 2015-present",
-  "date": "2019-08-04T00:39:48.057Z",
+  "copywrite": "Copyright (c) 2019-present",
+  "date": "2019-08-04T00:57:04.155Z",
   "describe": "",
   "description": "A Promise/A+ implementation.",
   "file": "promise-x.js",
