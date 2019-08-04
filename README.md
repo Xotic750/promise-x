@@ -46,6 +46,8 @@ A Promise/A+ implementation.
 
 - Has ES2018 finally implementation.
 
+- Can be sub-classed.
+
 **Example**
 
 ```js

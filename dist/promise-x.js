@@ -2,11 +2,11 @@
 {
   "author": "Graham Fairweather",
   "copywrite": "Copyright (c) 2015-present",
-  "date": "2019-08-03T23:49:25.931Z",
+  "date": "2019-08-04T00:39:48.057Z",
   "describe": "",
   "description": "A Promise/A+ implementation.",
   "file": "promise-x.js",
-  "hash": "54a750d4961012a62bc8",
+  "hash": "6bd7e05b39122ae76f2e",
   "license": "MIT",
   "version": "1.0.0"
 }
@@ -20,7 +20,7 @@
 		exports["promiseX"] = factory();
 	else
 		root["promiseX"] = factory();
-})((function() {
+})((function () {
   'use strict';
 
   if (typeof self !== 'undefined') {
@@ -5035,7 +5035,6 @@ var testWorkingFinally = function testWorkingFinally() {
 };
 
 var isWorking = Object(to_boolean_x__WEBPACK_IMPORTED_MODULE_7__[/* default */ "a"])(NativePromise) && testSupportsSubclassing() && testIgnoresNonFunctionThenCallbacks() && testRequiresObjectContext() && testPromiseResolve() && testThenSynchronicity() && testBadResolverPromise() && testWorkingFinally();
-console.log('isWorking', isWorking);
 /* harmony default export */ __webpack_exports__["default"] = (isWorking ? NativePromise : implementation());
 
 

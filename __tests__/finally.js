@@ -20,17 +20,35 @@ const assertArray = function(value, length, assertType) {
   }
 };
 
-const Subclass = (function() {
-  try {
-    return Function(
-      'class Subclass extends Promise { constructor(...args) { super(...args); this.thenArgs = []; } then(...args) { Subclass.thenArgs.push(args); this.thenArgs.push(args); return super.then(...args); } } Subclass.thenArgs = []; return Subclass;',
-    )();
-  } catch (e) {
-    /**/
-  }
+const getSubclass = function(P) {
+  if (!Object.setPrototypeOf) {
+    return null;
+  } // skip test if on IE < 11
 
-  return false;
-})();
+  const MyPromise = function(executor) {
+    const self = new P(executor);
+    Object.setPrototypeOf(self, MyPromise.prototype);
+    self.thenArgs = [];
+
+    return self;
+  };
+
+  Object.setPrototypeOf(MyPromise, P);
+  MyPromise.thenArgs = [];
+  MyPromise.prototype = Object.create(P.prototype, {
+    constructor: {value: MyPromise},
+    then: {
+      value(...args) {
+        MyPromise.thenArgs.push(args);
+        this.thenArgs.push(args);
+
+        return this;
+      },
+    },
+  });
+
+  return MyPromise;
+};
 
 [$I, $P].forEach(($Promise, testNum) => {
   describe(`finally  ${testNum}`, function() {
@@ -254,6 +272,7 @@ const Subclass = (function() {
 
     it('preserves correct subclass when chained', function() {
       expect.assertions(2);
+      const Subclass = getSubclass($Promise);
       /* eslint-disable-next-line promise/valid-params */
       const promise = Subclass.resolve().finally();
       expect(promise instanceof Subclass).toBe(true, 'promise is instanceof Subclass');
@@ -262,6 +281,7 @@ const Subclass = (function() {
 
     it('preserves correct subclass when rejected', function() {
       expect.assertions(2);
+      const Subclass = getSubclass($Promise);
 
       return new Bluebird((done) => {
         const promise = Subclass.resolve().finally(function() {
@@ -278,6 +298,7 @@ const Subclass = (function() {
 
     it('preserves correct subclass when someone returns a thenable', function() {
       expect.assertions(2);
+      const Subclass = getSubclass($Promise);
 
       return new Bluebird((done) => {
         /* eslint-disable-next-line promise/no-return-in-finally */
@@ -294,6 +315,7 @@ const Subclass = (function() {
     /* eslint-disable-next-line jest/expect-expect */
     it('invokes the subclass’ then', function() {
       expect.assertions(4);
+      const Subclass = getSubclass($Promise);
 
       return new Bluebird((done) => {
         Subclass.thenArgs.length = 0;
@@ -310,6 +332,7 @@ const Subclass = (function() {
 
     it('passes the original onFinally when not a function', function() {
       expect.assertions(8);
+      const Subclass = getSubclass($Promise);
 
       return new Bluebird((done) => {
         Subclass.thenArgs.length = 0;

@@ -1201,7 +1201,6 @@ var testWorkingFinally = function testWorkingFinally() {
 };
 
 var isWorking = toBoolean(NativePromise) && testSupportsSubclassing() && testIgnoresNonFunctionThenCallbacks() && testRequiresObjectContext() && testPromiseResolve() && testThenSynchronicity() && testBadResolverPromise() && testWorkingFinally();
-console.log('isWorking', isWorking);
 export default isWorking ? NativePromise : implementation();
 
 //# sourceMappingURL=promise-x.esm.js.map
