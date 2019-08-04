@@ -19,7 +19,7 @@
           {
             "loose": false,
             "modules": false,
-            "spec": false,
+            "spec": true,
             "useBuiltIns": false,
             "debug": false
           }
