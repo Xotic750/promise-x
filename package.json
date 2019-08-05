@@ -1,6 +1,6 @@
 {
   "name": "@xotic750/promise-x",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Promise/A+ and ES2018 implementation.",
   "homepage": "https://github.com/Xotic750/promise-x",
   "author": {
