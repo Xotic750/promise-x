@@ -18,15 +18,15 @@
   alt="devDependency status" height="18"/>
 </a>
 <a
-  href="https://badge.fury.io/js/%40xotic750%2Fpromise-x"
+  href="https://badge.fury.io/js/%40xotic750%2promise-x"
   title="npm version">
-<img src="https://badge.fury.io/js/%40xotic750%2Fpromise-x.svg"
+<img src="https://badge.fury.io/js/%40xotic750%2promise-x.svg"
   alt="npm version" height="18">
 </a>
 <a
-  href="https://www.jsdelivr.com/package/npm/@xotic750/promise-x"
+  href="https://www.jsdelivr.com/package/npm/promise-x"
   title="jsDelivr hits">
-<img src="https://data.jsdelivr.com/v1/package/npm/@xotic750/promise-x/badge?style=rounded"
+<img src="https://data.jsdelivr.com/v1/package/npm/promise-x/badge?style=rounded"
   alt="jsDelivr hits" height="18">
 </a>
 <a
@@ -35,6 +35,13 @@
 <img src="https://bettercodehub.com/edge/badge/Xotic750/promise-x?branch=master"
   alt="bettercodehub score" height="18">
 </a>
+<a
+  href="https://coveralls.io/github/Xotic750/promise-x?branch=master"
+  title="Coverage Status">
+<img src="https://coveralls.io/repos/github/Xotic750/promise-x/badge.svg?branch=master"
+  alt="Coverage Status" height="18">
+</a>
+
 <a href="http://promisesaplus.com/">
     <img src="http://promisesaplus.com/assets/logo-small.png" alt="Promises/A+ logo"
          title="Promises/A+ 1.1 compliant" align="right" />
