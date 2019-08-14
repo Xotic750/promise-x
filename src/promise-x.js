@@ -16,9 +16,7 @@ import assertIsFunction from 'assert-is-function-x';
 import assertIsObject from 'assert-is-object-x';
 import attempt from 'attempt-x';
 import renameFunction from 'rename-function-x';
-
-/* eslint-disable-next-line lodash/prefer-noop */
-const noop = function noop() {};
+import noop from 'noop-x';
 
 const identity = function identity(x) {
   return x;
@@ -36,8 +34,7 @@ const addEventListener = hasWindow && isFunction(window.addEventListener) ? wind
 const nativeSetTimeout = typeof setTimeout === 'undefined' || isPrimitive(setTimeout) ? null : setTimeout;
 const nativeSetImmediate = typeof setImmediate !== 'undefined' && isFunction(setImmediate) ? setImmediate : null;
 const {push, shift} = [];
-/* eslint-disable-next-line no-void */
-const UNDEFINED = void 0;
+const UNDEFINED = noop();
 const PRIVATE_PROMISE = '[[promise]]';
 
 const $apply = bind(Function.call, Function.apply);

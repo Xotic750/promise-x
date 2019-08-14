@@ -135,7 +135,7 @@ const failIfThrows = function(done) {
         $Promise
           .all(input)
           .then(function(value) {
-            expect(input).not.toEqual(value);
+            expect(input).not.toStrictEqual(value);
           })
           .then(done, failIfThrows(done));
       });

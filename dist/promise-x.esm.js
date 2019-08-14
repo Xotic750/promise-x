@@ -28,9 +28,7 @@ import assertIsFunction from 'assert-is-function-x';
 import assertIsObject from 'assert-is-object-x';
 import attempt from 'attempt-x';
 import renameFunction from 'rename-function-x';
-/* eslint-disable-next-line lodash/prefer-noop */
-
-var noop = function noop() {};
+import noop from 'noop-x';
 
 var identity = function identity(x) {
   return x;
@@ -51,9 +49,7 @@ var nativeSetImmediate = typeof setImmediate !== 'undefined' && isFunction(setIm
 var _ref = [],
     push = _ref.push,
     shift = _ref.shift;
-/* eslint-disable-next-line no-void */
-
-var UNDEFINED = void 0;
+var UNDEFINED = noop();
 var PRIVATE_PROMISE = '[[promise]]';
 var $apply = bind(Function.call, Function.apply);
 var $call = bind(Function.call, Function.call);
