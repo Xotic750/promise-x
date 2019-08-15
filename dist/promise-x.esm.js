@@ -10,7 +10,7 @@ function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = 
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
-import isPrimitive from 'is-primitive';
+import isPrimitive from 'is-primitive-x';
 import isFunction from 'is-function-x';
 import isNil from 'is-nil-x';
 import toObject from 'to-object-x';
