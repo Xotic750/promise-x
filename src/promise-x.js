@@ -3,7 +3,6 @@ import isFunction from 'is-function-x';
 import isNil from 'is-nil-x';
 import toObject from 'to-object-x';
 import isArguments from 'is-arguments';
-import bind from 'bind-x';
 import $iterator$ from 'symbol-iterator-x';
 import $species$ from 'symbol-species-x';
 import toBoolean from 'to-boolean-x';
@@ -17,6 +16,8 @@ import assertIsObject from 'assert-is-object-x';
 import attempt from 'attempt-x';
 import renameFunction from 'rename-function-x';
 import noop from 'noop-x';
+import methodize from 'simple-methodize-x';
+import call from 'simple-call-x';
 
 const identity = function identity(x) {
   return x;
@@ -33,17 +34,11 @@ const postMessage = hasWindow && isFunction(window.postMessage) ? window.postMes
 const addEventListener = hasWindow && isFunction(window.addEventListener) ? window.addEventListener : null;
 const nativeSetTimeout = typeof setTimeout === 'undefined' || isPrimitive(setTimeout) ? null : setTimeout;
 const nativeSetImmediate = typeof setImmediate !== 'undefined' && isFunction(setImmediate) ? setImmediate : null;
-const {push, shift} = [];
+const tempArray = [];
+const push = methodize(tempArray.push);
+const shift = methodize(tempArray.shift);
 const UNDEFINED = noop();
 const PRIVATE_PROMISE = '[[promise]]';
-
-const $apply = bind(Function.call, Function.apply);
-const $call = bind(Function.call, Function.call);
-
-const call = function call(F, V) {
-  /* eslint-disable-next-line prefer-rest-params */
-  return $apply(assertIsFunction(F), V, arguments.length > 2 ? arguments[2] : []);
-};
 
 const getMethod = function getMethod(o, p) {
   const func = toObject(o)[p];
@@ -260,7 +255,7 @@ const isPromise = function isPromise(promise) {
 
 const createSetZeroTimeout = function createSetZeroTimeout(timeouts, messageName) {
   return function setZeroTimeout(fn) {
-    push.call(timeouts, fn);
+    push(timeouts, fn);
     postMessage(messageName, '*');
   };
 };
@@ -278,7 +273,7 @@ const makeZeroTimeoutFn = function makeZeroTimeoutFn() {
         return;
       }
 
-      shift.call(timeouts)();
+      shift(timeouts)();
     }
   };
 
@@ -549,9 +544,9 @@ const optimizedThen = function optimizedThen(args) {
   // doesn't have to create it.  (The PROMISE_FAKE_CAPABILITY
   // object is local to this implementation and unforgeable outside.)
   if (then === Promise$prototype$then) {
-    $call(then, thenable, resolve, reject, PROMISE_FAKE_CAPABILITY);
+    call(then, thenable, [resolve, reject, PROMISE_FAKE_CAPABILITY]);
   } else {
-    $call(then, thenable, resolve, reject);
+    call(then, thenable, [resolve, reject]);
   }
 };
 
@@ -1015,7 +1010,7 @@ const testIgnoresNonFunctionThenCallbacks = function testIgnoresNonFunctionThenC
 
 const testRequiresObjectContext = function testRequiresObjectContext() {
   return throwsError(function throwee() {
-    return NativePromise.call(3, noop);
+    return call(NativePromise, 3, [noop]);
   });
 };
 
