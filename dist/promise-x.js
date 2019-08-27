@@ -2,7 +2,7 @@
 {
   "author": "Graham Fairweather",
   "copywrite": "Copyright (c) 2019-present",
-  "date": "2019-08-20T20:17:35.100Z",
+  "date": "2019-08-27T21:08:41.524Z",
   "describe": "",
   "description": "A Promise/A+ and ES2018 implementation.",
   "file": "promise-x.js",
