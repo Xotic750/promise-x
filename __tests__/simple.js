@@ -52,7 +52,10 @@ const failIfThrows = function(done) {
       let stolenResolver;
       const StealingPromiseConstructor = function StealingPromiseConstructor(resolver) {
         stolenResolver = resolver;
-        resolver(function() {}, function() {});
+        resolver(
+          function() {},
+          function() {},
+        );
       };
 
       const iterable = {};
